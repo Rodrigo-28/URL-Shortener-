@@ -21,6 +21,9 @@ namespace URLShortener.Domian.Models
 
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public int AccessCount { get; set; } = 0;
+
+        public List<UrlClick> Clicks { get; set; } = new List<UrlClick>();
 
     }
 }
