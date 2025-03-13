@@ -7,5 +7,9 @@ namespace URLShortener.Application.Interfaces
     {
         Task<ShortenedUrlDto> Create(UrlDto urlDto);
         Task<ShortenedUrlDto> GetOne(string Code);
+
+        Task RegisterClick(string Code);
+        Task<ShortenedUrlStatsDto> GetStats(string code);
+
     }
 }

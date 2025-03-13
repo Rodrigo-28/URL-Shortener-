@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using URL_Shortener.Middleware;
 using URLShortener.Application.Extensions;
+using URLShortener.Application.Interfaces;
 using URLShortener.Application.Mappings;
+using URLShortener.Application.Services;
 using URLShortener.infrastructure.Contexts;
 using URLShortener.infrastructure.Extensions;
 
@@ -12,6 +15,8 @@ builder.Services.AddInfrastructureServices();
 builder.Services.AddApplicationServices();
 //builder.Services.AddCustomSwagger();
 builder.Services.AddControllers();
+
+builder.Services.AddHttpClient<IGeoLocationService, GeoLocationService>();
 // Registrar IHttpContextAccessor
 builder.Services.AddHttpContextAccessor();
 
@@ -49,6 +54,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseMiddleware<ClickTrackingMiddleware>();
 
 app.UseHttpsRedirection();
 

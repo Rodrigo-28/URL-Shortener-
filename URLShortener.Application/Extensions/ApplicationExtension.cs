@@ -10,6 +10,7 @@ namespace URLShortener.Application.Extensions
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
             services.AddTransient<IShortenedUrlService, ShortenedUrlService>();
+            services.AddTransient<IGeoLocationService, GeoLocationService>();
             return services;
         }
     }

@@ -10,6 +10,7 @@ namespace URLShortener.infrastructure.Extensions
         public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
         {
             services.AddTransient<IShortenedUrlRepository, ShortenedUrlRepository>();
+            services.AddTransient<IUrlClickRepository, UrlClickRepository>();
 
             return services;
         }

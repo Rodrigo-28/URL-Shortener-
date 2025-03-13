@@ -7,6 +7,7 @@
         public DateTime ClickedAt { get; set; } = DateTime.Now;
         public string IpAddress { get; set; } = "UnKnown";
         public string Device { get; set; } = "UnKnown";
+        public string Country { get; set; } = "Unknown";
 
         public ShortenedUrl ShortenedUrl { get; set; }
     }
