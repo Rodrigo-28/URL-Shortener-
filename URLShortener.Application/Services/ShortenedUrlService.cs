@@ -1,9 +1,9 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 using URLShortener.Application.Dtos.Request;
 using URLShortener.Application.Dtos.Responses;
 using URLShortener.Application.Interfaces;
-using URLShortener.Domian.Common;
 using URLShortener.Domian.Interfaces;
 using URLShortener.Domian.Models;
 
@@ -13,31 +13,36 @@ namespace URLShortener.Application.Services
     {
         private readonly IShortenedUrlRepository _shortenedUrlRepository;
         private readonly IMapper _mapper;
-        private readonly Random _random = new Random();
-        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public ShortenedUrlService(IShortenedUrlRepository shortenedUrlRepository, IMapper mapper, IHttpContextAccessor httpContextAccessor)
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IMemoryCache _cache;
+        private readonly ICodeGeneratorService _codeGeneratorService;
+
+        public ShortenedUrlService(IShortenedUrlRepository shortenedUrlRepository,
+            IMapper mapper, IHttpContextAccessor httpContextAccessor, IMemoryCache cache, ICodeGeneratorService codeGeneratorService)
         {
             this._shortenedUrlRepository = shortenedUrlRepository;
             this._mapper = mapper;
             this._httpContextAccessor = httpContextAccessor;
+            this._cache = cache;
+            this._codeGeneratorService = codeGeneratorService;
         }
-        private string GenerateUniqueCode()
-        {
-            var codeChars = new char[ShortLinkSettings.Length];
-            int maxValue = ShortLinkSettings.Alphabet.Length;
+        //private string GenerateUniqueCode()
+        //{
+        //    var codeChars = new char[ShortLinkSettings.Length];
+        //    int maxValue = ShortLinkSettings.Alphabet.Length;
 
 
 
 
-            for (int i = 0; i < ShortLinkSettings.Length; i++)
-            {
-                var randomIndex = _random.Next(maxValue);
-                codeChars[i] = ShortLinkSettings.Alphabet[randomIndex];
-            }
+        //    for (int i = 0; i < ShortLinkSettings.Length; i++)
+        //    {
+        //        var randomIndex = _random.Next(maxValue);
+        //        codeChars[i] = ShortLinkSettings.Alphabet[randomIndex];
+        //    }
 
-            return new string(codeChars);
-        }
+        //    return new string(codeChars);
+        //}
 
         public async Task<ShortenedUrlDto> Create(UrlDto urlDto)
         {
@@ -49,7 +54,7 @@ namespace URLShortener.Application.Services
             string uniqueCode;
             do
             {
-                uniqueCode = GenerateUniqueCode();
+                uniqueCode = _codeGeneratorService.Generate();
             } while (await _shortenedUrlRepository.GetOne(uniqueCode) != null);
 
             // contexto http
@@ -69,6 +74,12 @@ namespace URLShortener.Application.Services
                 ShortUrl = shortUrl,
                 CreatedAt = DateTime.UtcNow
             };
+
+            //invalidar cache
+            var cacheKey = $"url_{uniqueCode}";
+            _cache.Remove(cacheKey);
+
+
             await _shortenedUrlRepository.Create(shortenedUrl);
             return _mapper.Map<ShortenedUrlDto>(shortenedUrl);
 
@@ -76,13 +87,42 @@ namespace URLShortener.Application.Services
 
         public async Task<ShortenedUrlDto> GetOne(string Code)
         {
-            var shortenedUrl = await _shortenedUrlRepository.GetOne(Code);
 
-            if (shortenedUrl == null)
+            var cacheKey = $"url_{Code}";
+            if (!_cache.TryGetValue(cacheKey, out ShortenedUrlDto shortenedUrlDto))
             {
-                throw new KeyNotFoundException("No se encontró la URL acortada.");
+                Console.WriteLine($"Cache MISS: {cacheKey} - Consultando BD...");
+                var shortenedUrl = await _shortenedUrlRepository.GetOne(Code);
+                if (shortenedUrl == null)
+                {
+                    throw new KeyNotFoundException("No se encontró la URL acortada.");
+                }
+
+
+                shortenedUrlDto = _mapper.Map<ShortenedUrlDto>(shortenedUrl);
+
+                // configuracion cache
+                AddToCache(cacheKey, shortenedUrlDto);
+
+
             }
-            return _mapper.Map<ShortenedUrlDto>(shortenedUrl);
+            else
+            {
+                Console.WriteLine($"Cache HIT: {cacheKey}");
+            }
+            return shortenedUrlDto;
+
+
+
+
+        }
+
+        private void AddToCache(string cacheKey, ShortenedUrlDto shortenedUrlDto)
+        {
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(TimeSpan.FromSeconds(60));
+
+            _cache.Set(cacheKey, shortenedUrlDto, cacheOptions);
         }
     }
 }

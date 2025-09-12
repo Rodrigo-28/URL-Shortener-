@@ -8,6 +8,9 @@ using URLShortener.infrastructure.Extensions;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+//cache
+builder.Services.AddMemoryCache();
 builder.Services.AddInfrastructureServices();
 builder.Services.AddApplicationServices();
 //builder.Services.AddCustomSwagger();
