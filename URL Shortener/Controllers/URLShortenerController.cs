@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using URLShortener.Application.Common;
 using URLShortener.Application.Dtos.Request;
 using URLShortener.Application.Dtos.Responses;
 using URLShortener.Application.Interfaces;
@@ -51,9 +52,14 @@ namespace URL_Shortener.Controllers
                 };
                 return Redirect(shortenedUrl.LongUrl);
             }
-            catch (Exception ex)
+            catch (ExpiredLinkException ex)
             {
 
+                // 410 Gone es semánticamente correcto para recursos expirados
+                return StatusCode(StatusCodes.Status410Gone, ex.Message);
+            }
+            catch (KeyNotFoundException ex)
+            {
                 return NotFound(ex.Message);
             }
         }

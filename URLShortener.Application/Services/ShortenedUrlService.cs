@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
+using URLShortener.Application.Common;
 using URLShortener.Application.Dtos.Request;
 using URLShortener.Application.Dtos.Responses;
 using URLShortener.Application.Interfaces;
@@ -64,7 +65,13 @@ namespace URLShortener.Application.Services
                 throw new InvalidOperationException("No se pudo acceder al contexto HTTP.");
             };
             //construir url corta
-            var shortUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/{uniqueCode}"; z
+            var shortUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/{uniqueCode}";
+            //  calcular expiración
+            DateTime? expiresAt = null;
+            if (urlDto.TtlMinutes.HasValue && urlDto.TtlMinutes.Value > 0)
+            {
+                expiresAt = DateTime.UtcNow.AddMinutes(urlDto.TtlMinutes.Value);
+            }
 
             var shortenedUrl = new ShortenedUrl()
             {
@@ -72,7 +79,8 @@ namespace URLShortener.Application.Services
                 LongUrl = urlDto.LongUrl,
                 Code = uniqueCode,
                 ShortUrl = shortUrl,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = expiresAt
             };
 
             //invalidar cache
@@ -81,7 +89,11 @@ namespace URLShortener.Application.Services
 
 
             await _shortenedUrlRepository.Create(shortenedUrl);
-            return _mapper.Map<ShortenedUrlDto>(shortenedUrl);
+
+            var dto = _mapper.Map<ShortenedUrlDto>(shortenedUrl);
+
+            AddToCache(cacheKey, dto);
+            return dto;
 
         }
 
@@ -98,7 +110,9 @@ namespace URLShortener.Application.Services
                     throw new KeyNotFoundException("No se encontró la URL acortada.");
                 }
 
-
+                // ⬇️ validar expiración
+                if (shortenedUrl.ExpiresAt.HasValue && shortenedUrl.ExpiresAt.Value <= DateTime.UtcNow)
+                    throw new ExpiredLinkException("La URL acortada expiró.");
                 shortenedUrlDto = _mapper.Map<ShortenedUrlDto>(shortenedUrl);
 
                 // configuracion cache
@@ -119,10 +133,25 @@ namespace URLShortener.Application.Services
 
         private void AddToCache(string cacheKey, ShortenedUrlDto shortenedUrlDto)
         {
-            var cacheOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(TimeSpan.FromSeconds(60));
 
-            _cache.Set(cacheKey, shortenedUrlDto, cacheOptions);
+            // si ya está expirada, no la cacheamos
+            if (shortenedUrlDto.ExpiresAt.HasValue && shortenedUrlDto.ExpiresAt.Value <= DateTime.UtcNow)
+                return;
+            var options = new MemoryCacheEntryOptions();
+
+            if (shortenedUrlDto.ExpiresAt.HasValue)
+            {
+                var remaining = shortenedUrlDto.ExpiresAt.Value - DateTime.UtcNow;
+                if (remaining <= TimeSpan.Zero) return;
+                options.SetAbsoluteExpiration(remaining);
+            }
+            else
+            {
+                // default anterior (60s)
+                options.SetAbsoluteExpiration(TimeSpan.FromSeconds(60));
+            }
+
+            _cache.Set(cacheKey, shortenedUrlDto, options);
         }
     }
 }
