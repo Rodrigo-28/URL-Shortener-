@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using URL_Shortener.Extensions;
 using URLShortener.Application.Extensions;
 using URLShortener.Application.Mappings;
 using URLShortener.infrastructure.Contexts;
@@ -38,6 +39,8 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+// Abstraemos configuración de rate limiting
+builder.Services.AddAppRateLimiting(builder.Configuration);
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -54,8 +57,11 @@ if (app.Environment.IsDevelopment())
 
 
 app.UseHttpsRedirection();
-
+app.UseRouting();
+// Activamos rate limiting
+app.UseAppRateLimiting();
 app.UseAuthorization();
+
 
 app.MapControllers();
 

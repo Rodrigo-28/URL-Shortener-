@@ -21,6 +21,8 @@ namespace URLShortener.Domian.Models
 
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        [Column("expiresAt")]
+        public DateTime? ExpiresAt { get; set; }
 
     }
 }
