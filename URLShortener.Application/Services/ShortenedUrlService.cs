@@ -59,7 +59,7 @@ namespace URLShortener.Application.Services
                 throw new InvalidOperationException("No se pudo acceder al contexto HTTP.");
             };
             //construir url corta
-            var shortUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/{uniqueCode}";
+            var shortUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/{uniqueCode}"; z
 
             var shortenedUrl = new ShortenedUrl()
             {

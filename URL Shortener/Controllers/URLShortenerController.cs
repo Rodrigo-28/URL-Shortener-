@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using URLShortener.Application.Dtos.Request;
 using URLShortener.Application.Dtos.Responses;
 using URLShortener.Application.Interfaces;
@@ -16,6 +17,7 @@ namespace URL_Shortener.Controllers
             this._shortenedUrlService = shortenedUrlService;
         }
         [HttpPost]
+        [EnableRateLimiting("CreatePolicy")]
         public async Task<ActionResult<ShortenedUrlDto>> Create([FromBody] UrlDto urlDto)
         {
             if (urlDto == null)
